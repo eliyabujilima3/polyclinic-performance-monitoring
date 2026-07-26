@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Privacy &amp; ethics</h1>
+<div class="card">
+  <h2>What this platform stores</h2>
+  <p>This system is for <strong>organizational performance monitoring</strong> using aggregate operational data (department revenue, patient volumes, diagnoses counts, feedback categories, etc.).</p>
+  <h2>What must not be uploaded</h2>
+  <ul>
+    <li>Patient names, phone numbers, emails, national IDs / NIDA, passport numbers</li>
+    <li>Medical record numbers (MRN), home addresses, next-of-kin details</li>
+    <li>Photos, fingerprints, or other direct identifiers</li>
+  </ul>
+  <p>Uploads containing those column names are <strong>blocked automatically</strong>. Staff must also tick a privacy confirmation before upload.</p>
+  <h2>Accountability</h2>
+  <p>Key actions (upload, save, download, report generate/print, suspend) are written to an <strong>audit log</strong> with user and timestamp — not the clinical row contents.</p>
+  <h2>Retention</h2>
+  <p>Unfinished review drafts in <code>uploads/</code> are removed after 48 hours. Organizations should only keep cleaned aggregate datasets needed for reporting.</p>
+</div>
+<a href="{{ url_for('index') }}">← Home</a>
+{% endblock %}

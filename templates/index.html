@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Polyclinic Reporting Platform{% endblock %}
+{% block wrap_class %}{% endblock %}
+
+{% block hero %}
+<section class="hero">
+  <div class="hero-inner">
+    <p class="hero-brand">Polyclinic Reporting Platform</p>
+    <p class="hero-line">Turn messy clinic data into clean insights and performance reports — for every polyclinic, separately.</p>
+    <div class="hero-ctas">
+      {% if current_user %}
+        {% if current_user.role == 'super_admin' %}
+          <a class="btn light" href="{{ url_for('super_admin_dashboard') }}">Open platform admin</a>
+        {% elif current_user.role == 'org_admin' %}
+          <a class="btn light" href="{{ url_for('org_admin_dashboard') }}">Open org dashboard</a>
+        {% else %}
+          <a class="btn light" href="{{ url_for('staff_dashboard') }}">Open data entry</a>
+        {% endif %}
+      {% else %}
+        <a class="btn light" href="{{ url_for('register') }}">Register your organization</a>
+        <a class="btn ghost-light" href="{{ url_for('login') }}">Log in</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="wrap" style="padding-top:8px; padding-bottom:0;">
+  <section class="home-section" id="how-it-works">
+    <h2>How it works</h2>
+    <p class="lead">One platform for capture, cleaning, and reporting — so managers act on reliable numbers, not scattered spreadsheets.</p>
+    <div class="flow">
+      <article>
+        <h3>Capture</h3>
+        <p>Staff upload Excel/CSV or enter records manually. The system flags contamination and shows a review screen before anything is saved.</p>
+      </article>
+      <article>
+        <h3>Clean &amp; download</h3>
+        <p>Missing values, negatives, and word-numbers are corrected. Staff keep a clean dataset; organization admins work from trusted data.</p>
+      </article>
+      <article>
+        <h3>Report &amp; decide</h3>
+        <p>Org admins set targets, generate performance reports, and print or save PDF views for revenue, patients, compliance, and more.</p>
+      </article>
+    </div>
+  </section>
+</div>
+
+<section class="split-band">
+  <div class="inner">
+    <h2>Built for polyclinic roles</h2>
+    <p class="lead" style="margin-bottom:0;">Each organization stays isolated — your staff, your KPIs, your reports.</p>
+    <div class="role-list">
+      <div>
+        <h3>Staff</h3>
+        <p>Enter or upload operational data, review corrections, and download the cleaned file.</p>
+      </div>
+      <div>
+        <h3>Organization admin</h3>
+        <p>Manage staff, set targets and budgets, generate dashboards, and download printable reports.</p>
+      </div>
+      <div>
+        <h3>Platform admin</h3>
+        <p>Approve, reject, or suspend organizations — including when subscription payment fails.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap" style="padding-top:0;">
+  <section class="home-cta">
+    <h2>Ready to monitor performance?</h2>
+    <p>Register your polyclinic, wait for platform approval, then start uploading period data.</p>
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <a class="btn" href="{{ url_for('register') }}">Register organization</a>
+      <a class="btn secondary" href="#contact">Contact support</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

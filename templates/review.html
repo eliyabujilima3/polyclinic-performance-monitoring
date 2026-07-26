@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Review cleaned data</h1>
+<p class="muted">
+  {{ pending.category_name }} · {{ pending.period_start }} → {{ pending.period_end }} ·
+  source: {{ pending.original_filename }}
+</p>
+
+<div class="statgrid">
+  <div class="statbox"><div class="n">{{ pending.row_count }}</div><div class="l">Rows after cleaning</div></div>
+  <div class="statbox"><div class="n">{{ pending.missing_count }}</div><div class="l">Issues corrected</div></div>
+  <div class="statbox">
+    <div class="n">{{ pending.quality_score if pending.quality_score is defined else '—' }}</div>
+    <div class="l">Data quality score / 100</div>
+  </div>
+</div>
+<p class="muted" style="font-size:12.5px;">Higher quality score means fewer blanks, format fixes, and duplicates in the original file.</p>
+
+{% if notes %}
+<div class="card">
+  <h2>Extra cleaning notes</h2>
+  <p>{{ notes }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Corrections applied</h2>
+  {% if correction_items %}
+  <table>
+    <tr><th>Column</th><th>Method</th><th>Fill / value</th><th>Fixed</th><th>Reformatted</th></tr>
+    {% for col, detail in correction_items %}
+    <tr>
+      <td>{{ col }}</td>
+      <td>{{ detail.method }}</td>
+      <td>{{ detail.value }}</td>
+      <td>{{ detail.count }}</td>
+      <td>{{ detail.reformatted_count }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No cell-level corrections needed.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Preview (first {{ preview|length }} rows)</h2>
+  {% if preview %}
+  <div style="overflow-x:auto;">
+    <table>
+      <tr>
+        {% for col in pending.columns %}
+        <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+      {% for row in preview %}
+      <tr>
+        {% for col in pending.columns %}
+        <td>{{ row[col] }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<div style="display:flex; gap:12px; flex-wrap:wrap;">
+  <form method="POST" action="{{ url_for('confirm_dataset') }}">
+    <button class="btn">Confirm &amp; save cleaned dataset</button>
+  </form>
+  <form method="POST" action="{{ url_for('cancel_review') }}">
+    <button class="btn danger">Cancel</button>
+  </form>
+  <a class="btn secondary" href="{{ url_for('staff_dashboard') }}">Back</a>
+</div>
+{% endblock %}

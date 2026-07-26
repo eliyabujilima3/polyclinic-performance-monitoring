@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Platform Admin</h1>
+<p class="muted">Approve new clinics, reject bad registrations, or suspend unpaid organizations (accounts become inactive).</p>
+
+<div class="card">
+  <h2>Pending organizations ({{ pending|length }})</h2>
+  {% if pending %}
+  <table>
+    <tr><th>Name</th><th>Region</th><th>Requested</th><th>Actions</th></tr>
+    {% for org in pending %}
+    <tr>
+      <td>{{ org.name }}</td>
+      <td>{{ org.region }}</td>
+      <td>{{ org.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('approve_org', org_id=org.id) }}" style="display:inline;">
+          <button class="btn">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('reject_org', org_id=org.id) }}" style="display:inline;">
+          <button class="btn danger">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No pending organizations.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Approved organizations ({{ approved|length }})</h2>
+  {% if approved %}
+  <table>
+    <tr><th>Name</th><th>Region</th><th>Status</th><th>Actions</th></tr>
+    {% for org in approved %}
+    <tr>
+      <td>{{ org.name }}</td>
+      <td>{{ org.region }}</td>
+      <td><span class="pill approved">approved</span></td>
+      <td>
+        <form method="POST" action="{{ url_for('suspend_org', org_id=org.id) }}" style="display:inline;"
+              onsubmit="return confirm('Suspend {{ org.name }}? All their accounts will become inactive.');">
+          <button class="btn danger">Suspend</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No approved organizations yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Suspended organizations ({{ suspended|length }})</h2>
+  {% if suspended %}
+  <table>
+    <tr><th>Name</th><th>Region</th><th>Status</th><th>Actions</th></tr>
+    {% for org in suspended %}
+    <tr>
+      <td>{{ org.name }}</td>
+      <td>{{ org.region }}</td>
+      <td><span class="pill pending">suspended</span></td>
+      <td>
+        <form method="POST" action="{{ url_for('reactivate_org', org_id=org.id) }}" style="display:inline;">
+          <button class="btn">Reactivate</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No suspended organizations.</p>
+  {% endif %}
+</div>
+
+{% if rejected %}
+<div class="card">
+  <h2>Rejected organizations ({{ rejected|length }})</h2>
+  <table>
+    <tr><th>Name</th><th>Region</th><th>Status</th></tr>
+    {% for org in rejected %}
+    <tr>
+      <td>{{ org.name }}</td>
+      <td>{{ org.region }}</td>
+      <td><span class="pill rejected">rejected</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

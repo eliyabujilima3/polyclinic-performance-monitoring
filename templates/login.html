@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Log in</h1>
+<div class="card" style="max-width:420px;">
+  <form method="POST">
+    <label>Email</label>
+    <input type="email" name="email" required />
+    <label>Password</label>
+    <input type="password" name="password" required />
+    <button class="btn" style="margin-top:20px;">Log in</button>
+  </form>
+</div>
+<p class="muted">Platform admin demo login: admin@platform.com / admin123</p>
+{% endblock %}

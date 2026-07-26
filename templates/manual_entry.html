@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Manual data entry</h1>
+<p class="muted">Add operations rows for the period, then send them through cleaning &amp; review.</p>
+
+<form method="POST" action="{{ url_for('manual_entry') }}">
+  <div class="card">
+    <h2>Period &amp; category</h2>
+    <div class="grid2">
+      <div>
+        <label>KPI category</label>
+        <select name="category_id" required>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if category_id|string == c.id|string or (not category_id and c.name == 'Operations Dataset') %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Quick period (calendar month)</label>
+        <select onchange="applyMonthPreset(this)">
+          <option value="">— choose month —</option>
+          {% for m in month_options %}
+          <option value="{{ m.start }}|{{ m.end }}">{{ m.label }}</option>
+          {% endfor %}
+        </select>
+        <label>Reporting period start</label>
+        <input type="date" name="period_start" value="{{ period_start }}" required />
+        <label>Reporting period end</label>
+        <input type="date" name="period_end" value="{{ period_end }}" required />
+        <p class="muted" style="font-size:12px;">Date range the records cover — not today’s upload date.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Add one row</h2>
+    <div class="grid2">
+      {% for col in columns %}
+      <div>
+        <label>{{ col }}</label>
+        <input name="{{ col }}" placeholder="{{ col }}" />
+      </div>
+      {% endfor %}
+    </div>
+    <label style="display:flex; gap:10px; align-items:flex-start; margin-top:14px; font-weight:500; color:var(--ink);">
+      <input type="checkbox" name="privacy_consent" value="yes" style="width:auto; margin-top:3px;" />
+      <span>Required before review: I confirm draft rows have <strong>no personal patient identifiers</strong>.</span>
+    </label>
+    <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+      <button class="btn" name="action" value="add">Add row to draft</button>
+      <button class="btn secondary" name="action" value="review">Clean &amp; review draft</button>
+      <button class="btn danger" name="action" value="clear">Clear draft</button>
+    </div>
+  </div>
+</form>
+
+<div class="card">
+  <h2>Draft rows ({{ draft_rows|length }})</h2>
+  {% if draft_rows %}
+  <div style="overflow-x:auto;">
+    <table>
+      <tr>
+        {% for col in columns %}
+        <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+      {% for row in draft_rows %}
+      <tr>
+        {% for col in columns %}
+        <td>{{ row.get(col, '') }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">No rows in the draft yet.</p>
+  {% endif %}
+</div>
+
+<a href="{{ url_for('staff_dashboard') }}">← Back to staff dashboard</a>
+<script>
+function applyMonthPreset(sel){
+  if(!sel.value) return;
+  const [start,end] = sel.value.split('|');
+  const form = sel.form;
+  const s = form.querySelector('[name="period_start"]');
+  const e = form.querySelector('[name="period_end"]');
+  if(s) s.value = start;
+  if(e) e.value = end;
+}
+</script>
+{% endblock %}

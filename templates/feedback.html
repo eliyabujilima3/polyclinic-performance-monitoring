@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Usability feedback (UAT)</h1>
+<p class="muted">Help evaluate the system — used for the project evaluation objective. No patient data is collected here.</p>
+<div class="card" style="max-width:520px;">
+  <form method="POST">
+    <label>How easy was the system to use? (1 = hard, 5 = very easy)</label>
+    <select name="ease_score" required>
+      <option value="">—</option>
+      {% for i in range(1,6) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+    </select>
+    <label>How useful for monitoring / reporting? (1 = not useful, 5 = very useful)</label>
+    <select name="useful_score" required>
+      <option value="">—</option>
+      {% for i in range(1,6) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+    </select>
+    <label>Comments (optional)</label>
+    <input name="comment" placeholder="What should improve?" />
+    <button class="btn" style="margin-top:16px;">Submit feedback</button>
+  </form>
+</div>
+{% endblock %}

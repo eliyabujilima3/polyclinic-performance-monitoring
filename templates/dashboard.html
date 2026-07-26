@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Performance report</h1>
+<p class="muted">
+  {{ org.name if org else '' }} · {{ report.period_start }} → {{ report.period_end }}
+  · generated {{ report.generated_at.strftime('%Y-%m-%d %H:%M') }}
+</p>
+<p>
+  <a class="btn" href="{{ url_for('print_report', report_id=report.id) }}">Print / Save as PDF</a>
+  <a class="btn secondary" href="{{ url_for('org_admin_dashboard') }}">Back</a>
+</p>
+
+{% for cat_name, cat in summary.items() %}
+<div class="card">
+  <h2>{{ cat_name }}</h2>
+  <p class="muted">
+    {{ cat.missing_corrected }} issue(s) corrected · {{ cat.row_count or '—' }} rows · source: {{ cat.filename }}
+    {% if cat.quality_score is not none %} · data quality {{ cat.quality_score }}/100{% endif %}
+  </p>
+
+  {% if cat.report_type == "operations_simple" %}
+    {% set s = cat.sections %}
+
+    {% if s.profit_loss %}
+    <h3 style="font-size:17px; color:var(--dark);">Profit &amp; Loss Summary</h3>
+    <div class="statgrid">
+      <div class="statbox"><div class="n">{{ "{:,.0f}".format(s.profit_loss.revenue_total) }}</div><div class="l">Total revenue (TZS)</div></div>
+      <div class="statbox"><div class="n">{{ "{:,.0f}".format(s.profit_loss.expense_total) }}</div><div class="l">Total expenses (TZS){% if s.profit_loss.expense_ratio_pct is not none %} · {{ s.profit_loss.expense_ratio_pct }}% of revenue{% endif %}</div></div>
+      <div class="statbox" style="background:{{ 'var(--card)' if s.profit_loss.profit >= 0 else '#F0D4D2' }};">
+        <div class="n" style="color:{{ 'var(--teal)' if s.profit_loss.profit >= 0 else '#9B2C2C' }};">{{ "{:,.0f}".format(s.profit_loss.profit) }}</div>
+        <div class="l">{{ "Profit" if s.profit_loss.profit >= 0 else "Loss" }}{% if s.profit_loss.profit_margin_pct is not none %} · margin {{ s.profit_loss.profit_margin_pct }}%{% endif %}</div>
+      </div>
+    </div>
+    {% if s.profit_loss.by_department %}
+    <table>
+      <tr><th>Department</th><th>Revenue</th><th>Rev %</th><th>Expenses</th><th>Exp %</th><th>Profit</th></tr>
+      {% for r in s.profit_loss.by_department %}
+      <tr>
+        <td>{{ r.department }}</td>
+        <td>{{ "{:,.0f}".format(r.revenue) }}</td>
+        <td>{{ r.revenue_share_pct }}%</td>
+        <td>{{ "{:,.0f}".format(r.expenses) }}</td>
+        <td>{{ r.expense_share_pct }}%</td>
+        <td>{{ "{:,.0f}".format(r.profit) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% if s.profit_loss.chart_b64 %}
+    <img src="data:image/png;base64,{{ s.profit_loss.chart_b64 }}" style="max-width:100%; margin-top:12px; border-radius:8px;" />
+    {% endif %}
+    {% endif %}
+
+    {% if s.targets %}
+    <h3 style="font-size:17px; color:var(--dark); margin-top:22px;">Actual vs Target / Budget</h3>
+    <p class="muted">Next targets assume {{ s.targets.growth_assumption_pct }}% growth (same approach as the sample report).</p>
+    {% if s.targets.revenue_rows %}
+    <p style="font-weight:700; font-size:15px;">Revenue — Actual vs Target</p>
+    <table>
+      <tr><th>Department</th><th>Actual</th><th>Target</th><th>Next Target</th><th>% Achieved</th><th>Variance</th></tr>
+      {% for r in s.targets.revenue_rows %}
+      <tr>
+        <td>{{ r.department }}</td>
+        <td>{{ "{:,.0f}".format(r.actual) }}</td>
+        <td>{{ "{:,.0f}".format(r.target) }}</td>
+        <td>{{ "{:,.0f}".format(r.next_target) }}</td>
+        <td>{{ r.pct_achieved if r.pct_achieved is not none else "—" }}{{ "%" if r.pct_achieved is not none else "" }}</td>
+        <td>{{ "{:,.0f}".format(r.variance) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% if s.targets.expense_rows %}
+    <p style="font-weight:700; font-size:15px; margin-top:14px;">Expenses — Actual vs Budget</p>
+    <table>
+      <tr><th>Department</th><th>Actual</th><th>Budget</th><th>Next Budget</th><th>% Used</th><th>Variance</th></tr>
+      {% for r in s.targets.expense_rows %}
+      <tr>
+        <td>{{ r.department }}</td>
+        <td>{{ "{:,.0f}".format(r.actual) }}</td>
+        <td>{{ "{:,.0f}".format(r.budget) }}</td>
+        <td>{{ "{:,.0f}".format(r.next_budget) }}</td>
+        <td>{{ r.pct_used if r.pct_used is not none else "—" }}{{ "%" if r.pct_used is not none else "" }}</td>
+        <td>{{ "{:,.0f}".format(r.variance) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% endif %}
+
+    {% if s.trend %}
+    <h3 style="font-size:17px; color:var(--dark); margin-top:22px;">Revenue Trends with Monthly Growth &amp; YTD</h3>
+    {% if s.trend.trend_chart_b64 %}
+    <img src="data:image/png;base64,{{ s.trend.trend_chart_b64 }}" style="max-width:100%; border-radius:8px;" />
+    {% endif %}
+    {% if s.trend.ytd_chart_b64 %}
+    <img src="data:image/png;base64,{{ s.trend.ytd_chart_b64 }}" style="max-width:100%; margin-top:10px; border-radius:8px;" />
+    {% endif %}
+    <table>
+      <tr><th>Month</th><th>Revenue</th><th>Expenses</th><th>Profit</th><th>Growth %</th><th>YTD Revenue</th><th>Patients</th></tr>
+      {% for r in s.trend.rows %}
+      <tr>
+        <td>{{ r.period }}</td>
+        <td>{{ "{:,.0f}".format(r.revenue) }}</td>
+        <td>{{ "{:,.0f}".format(r.expenses) }}</td>
+        <td>{{ "{:,.0f}".format(r.profit) }}</td>
+        <td style="color:{{ 'var(--teal)' if r.growth_pct >= 0 else '#9B2C2C' }};">{{ r.growth_pct }}%</td>
+        <td>{{ "{:,.0f}".format(r.ytd_revenue) }}</td>
+        <td>{{ "{:,.0f}".format(r.patients) }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if s.forecast %}
+    <h3 style="font-size:17px; color:var(--dark); margin-top:22px;">Recommended next-period outlook</h3>
+    <p class="muted" style="font-size:12.5px;">{{ s.forecast.note }} Based on {{ s.forecast.based_on_periods }} periods (last: {{ s.forecast.last_period }}).</p>
+    <div class="statgrid">
+      <div class="statbox"><div class="n">{{ "{:,.0f}".format(s.forecast.next_revenue) }}</div><div class="l">Forecast revenue ({{ s.forecast.revenue_growth_pct }}%)</div></div>
+      <div class="statbox"><div class="n">{{ "{:,.0f}".format(s.forecast.next_expenses) }}</div><div class="l">Forecast expenses ({{ s.forecast.expense_growth_pct }}%)</div></div>
+      <div class="statbox"><div class="n">{{ "{:,.0f}".format(s.forecast.next_patients) if s.forecast.next_patients is not none else '—' }}</div><div class="l">Forecast patients</div></div>
+    </div>
+    {% endif %}
+
+    {% if s.patient_flow %}
+    <h3 style="font-size:15px; color:var(--dark); margin-top:20px;">Patient volume &amp; flow</h3>
+    <div class="statgrid">
+      <div class="statbox"><div class="n">{{ s.patient_flow.total_patients }}</div><div class="l">Patients seen</div></div>
+      <div class="statbox"><div class="n">{{ s.patient_flow.avg_waiting_min if s.patient_flow.avg_waiting_min is not none else '—' }}</div><div class="l">Avg waiting (min)</div></div>
+      <div class="statbox"><div class="n">{{ s.patient_flow.avg_bed_occupancy if s.patient_flow.avg_bed_occupancy is not none else '—' }}</div><div class="l">Avg bed occupancy</div></div>
+    </div>
+    {% endif %}
+
+    {% if s.compliance %}
+    <h3 style="font-size:17px; color:var(--dark); margin-top:22px;">Compliance status</h3>
+    <table>
+      <tr><th>Status</th><th>Count</th><th>Share %</th></tr>
+      {% for it in s.compliance.rows %}
+      <tr><td>{{ it.label }}</td><td>{{ it.count }}</td><td>{{ it.pct }}%</td></tr>
+      {% endfor %}
+    </table>
+    {% if s.compliance.chart_b64 %}
+    <img src="data:image/png;base64,{{ s.compliance.chart_b64 }}" style="max-width:100%; margin-top:12px; border-radius:8px;" />
+    {% endif %}
+    {% endif %}
+
+    {% if s.diagnoses %}
+    <h3 style="font-size:17px; color:var(--dark); margin-top:22px;">Top diagnoses</h3>
+    <table>
+      <tr><th>Diagnosis</th><th>Frequency</th><th>Share %</th></tr>
+      {% for it in s.diagnoses.rows %}
+      <tr><td>{{ it.label }}</td><td>{{ it.count }}</td><td>{{ it.pct }}%</td></tr>
+      {% endfor %}
+    </table>
+    {% if s.diagnoses.chart_b64 %}
+    <img src="data:image/png;base64,{{ s.diagnoses.chart_b64 }}" style="max-width:100%; margin-top:12px; border-radius:8px;" />
+    {% endif %}
+    {% endif %}
+
+    {% if s.experience %}
+    <h3 style="font-size:17px; color:var(--dark); margin-top:22px;">Feedback experience</h3>
+    <p>Average rating: <strong>{{ s.experience.average if s.experience.average is not none else '—' }}</strong></p>
+    {% endif %}
+
+    {% for key, title in [
+      ('occupation',"Clients' occupation"),
+      ('residence',"Clients' residence"),
+      ('age_group',"Clients' age group"),
+      ('feedback_source','Feedback source'),
+      ('marketing','Marketing action log'),
+      ('sponsorship','Clients sponsorship'),
+      ('survey','New clients survey')
+    ] %}
+      {% if s[key] %}
+      <h3 style="font-size:17px; color:var(--dark); margin-top:18px;">{{ title }}</h3>
+      <table>
+        <tr><th>Value</th><th>Count</th><th>Share %</th></tr>
+        {% for it in s[key].rows %}
+        <tr><td>{{ it.label }}</td><td>{{ it.count }}</td><td>{{ it.pct }}%</td></tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    {% endfor %}
+
+  {% elif cat.report_type == "revenue_expense" %}
+    <div class="statgrid">
+      <div class="statbox"><div class="n">{{ "{:,.2f}".format(cat.revenue_total) }}</div><div class="l">Total Revenue (TZS)</div></div>
+      <div class="statbox"><div class="n">{{ "{:,.2f}".format(cat.expense_total) }}</div><div class="l">Total Expenses (TZS)</div></div>
+      <div class="statbox"><div class="n">{{ "{:,.2f}".format(cat.profit) }}</div><div class="l">Profit / Loss</div></div>
+    </div>
+    {% for type_name, section in cat.sections.items() %}
+    <h3 style="font-size:14.5px; color:var(--dark); margin:18px 0 6px;">{{ type_name }} by department</h3>
+    <table>
+      <tr><th>Department</th><th>Actual</th><th>Target</th><th>Next Target</th><th>% Achieved</th></tr>
+      {% for r in section.rows %}
+      <tr>
+        <td>{{ r.department }}</td>
+        <td>{{ "{:,.2f}".format(r.actual) }}</td>
+        <td>{{ "{:,.2f}".format(r.target) }}</td>
+        <td>{{ "{:,.2f}".format(r.next_target) }}</td>
+        <td>{{ r.pct_achieved if r.pct_achieved is not none else "—" }}{{ "%" if r.pct_achieved is not none else "" }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endfor %}
+    {% if cat.chart_b64 %}
+    <img src="data:image/png;base64,{{ cat.chart_b64 }}" style="max-width:100%; margin-top:16px; border-radius:8px;" />
+    {% endif %}
+
+  {% elif cat.report_type == "compliance" %}
+    <div class="statgrid">
+      {% for status, count in cat.counts.items() %}
+      <div class="statbox">
+        <div class="n">{{ count }}</div>
+        <div class="l">{{ status }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <table>
+      <tr><th>Certification</th><th>Valid Until</th><th>Days Before Expiry</th><th>Status</th></tr>
+      {% for r in cat.rows %}
+      <tr>
+        <td>{{ r.certification_name }}</td>
+        <td>{{ r.valid_until }}</td>
+        <td>{{ r.days_before_expiry }}</td>
+        <td>{{ r.status }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+  {% else %}
+    {% if cat.numeric %}
+    <div class="statgrid">
+      {% for col, s in cat.numeric.items() %}
+      <div class="statbox">
+        <div class="n">{{ s.mean }}</div>
+        <div class="l">avg {{ col }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if cat.categorical %}
+      {% for col, items in cat.categorical.items() %}
+      <p style="font-weight:700; font-size:13px; color:var(--dark); margin:16px 0 6px;">{{ col }}</p>
+      <table>
+        <tr><th>Value</th><th>Count</th></tr>
+        {% for it in items %}
+        <tr><td>{{ it.label }}</td><td>{{ it.count }}</td></tr>
+        {% endfor %}
+      </table>
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

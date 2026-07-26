@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Staff — Data Entry</h1>
+<p class="muted">Upload operational aggregates only — never patient names, phones, or IDs. Clean, review, then download.</p>
+
+{% if pending %}
+<div class="flash" style="background:#FCE7C8; color:#8A5A00;">
+  You have a cleaned dataset waiting for review
+  ({{ pending.row_count }} rows for {{ pending.category_name }}).
+  <a href="{{ url_for('review_dataset') }}">Continue review →</a>
+</div>
+{% endif %}
+
+<div class="grid2">
+  <div class="card">
+    <h2>Upload Excel / CSV</h2>
+    <p class="muted" style="font-size:12.5px;">
+      Prefer <strong>Operations Dataset</strong>. Files with personal columns (Name, Phone, National ID…) are blocked.
+    </p>
+    <form method="POST" action="{{ url_for('upload_dataset') }}" enctype="multipart/form-data">
+      <label>KPI category</label>
+      <select name="category_id" required>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {% if c.name == 'Operations Dataset' %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Quick period (calendar month)</label>
+      <select id="month_preset" onchange="applyMonthPreset(this)">
+        <option value="">— choose month —</option>
+        {% for m in month_options %}
+        <option value="{{ m.start }}|{{ m.end }}">{{ m.label }}</option>
+        {% endfor %}
+      </select>
+      <label>Reporting period start</label>
+      <input type="date" name="period_start" id="period_start" required />
+      <label>Reporting period end</label>
+      <input type="date" name="period_end" id="period_end" required />
+      <p class="muted" style="font-size:12px; margin-top:6px;">
+        Date range the records cover (e.g. June 1–30), not today’s upload date.
+      </p>
+      <label>Data file (.xlsx, .xls, .csv)</label>
+      <input type="file" name="datafile" accept=".xlsx,.xls,.csv" required />
+
+      <label style="display:flex; gap:10px; align-items:flex-start; margin-top:14px; font-weight:500; color:var(--ink);">
+        <input type="checkbox" name="privacy_consent" value="yes" required style="width:auto; margin-top:3px;" />
+        <span>I confirm this file has <strong>no personal patient information</strong> (names, phones, IDs, addresses). Aggregates only. <a href="{{ url_for('privacy_policy') }}">Privacy policy</a></span>
+      </label>
+      <button class="btn" style="margin-top:16px;">Clean &amp; review</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Enter data manually</h2>
+    <p class="muted">Add operational rows one by one (no patient identifiers), then clean &amp; review.</p>
+    <a class="btn secondary" href="{{ url_for('manual_entry') }}">Open manual entry →</a>
+    <p style="margin-top:18px;"><a href="{{ url_for('uat_feedback') }}">Give usability feedback →</a></p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Saved cleaned datasets</h2>
+  {% if recent %}
+  <table>
+    <tr>
+      <th>Category</th><th>Period</th><th>Source</th><th>Rows</th><th>Issues fixed</th><th>Download</th>
+    </tr>
+    {% for d in recent %}
+    <tr>
+      <td>{{ d.category.name }}</td>
+      <td>{{ d.period_start }} → {{ d.period_end }}</td>
+      <td>{{ d.original_filename }}</td>
+      <td>{{ d.row_count }}</td>
+      <td>{{ d.missing_count }}</td>
+      <td>
+        <a href="{{ url_for('download_cleaned', dataset_id=d.id) }}">Excel</a>
+        ·
+        <a href="{{ url_for('download_cleaned', dataset_id=d.id, format='csv') }}">CSV</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No datasets saved yet.</p>
+  {% endif %}
+</div>
+<script>
+function applyMonthPreset(sel){
+  if(!sel.value) return;
+  const [start,end] = sel.value.split('|');
+  const form = sel.form || document;
+  const s = form.querySelector('[name="period_start"]') || document.getElementById('period_start');
+  const e = form.querySelector('[name="period_end"]') || document.getElementById('period_end');
+  if(s) s.value = start;
+  if(e) e.value = end;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Organization Admin</h1>
+<p class="muted">Manage staff, targets, and reports. Operational aggregates only — no personal patient data.</p>
+
+{% if alerts %}
+<div class="card">
+  <h2>Alerts</h2>
+  {% for a in alerts %}
+  <div class="flash {{ 'error' if a.level == 'warn' else 'success' }}" style="{% if a.level == 'info' %}background:#EAF6F4;color:#01353C;{% endif %}">
+    {{ a.text }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card" style="max-width:560px;">
+  <h2>Generate performance report</h2>
+  <p class="muted">Uses cleaned datasets for the chosen period. Open the report, then use Print / Save as PDF.</p>
+  <form method="POST" action="{{ url_for('generate_report') }}">
+    <label>Quick period (calendar month)</label>
+    <select onchange="applyMonthPreset(this)">
+      <option value="">— choose month —</option>
+      {% for m in month_options %}
+      <option value="{{ m.start }}|{{ m.end }}">{{ m.label }}</option>
+      {% endfor %}
+    </select>
+    <label>Reporting period start</label>
+    <input type="date" name="period_start" required />
+    <label>Reporting period end</label>
+    <input type="date" name="period_end" required />
+    <p class="muted" style="font-size:12px; margin-top:6px;">
+      Must match the same period staff used when uploading the cleaned dataset.
+    </p>
+    <button class="btn" style="margin-top:16px;">Generate report</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Targets &amp; budgets</h2>
+  <p class="muted">
+    Set revenue targets or expense budgets by department for a reporting period.
+    When you generate a report for that same period, actuals from staff data are compared here.
+  </p>
+  <form method="POST" action="{{ url_for('add_target') }}" class="grid2" style="align-items:end;">
+    <div>
+      <label>Department</label>
+      <input name="department" required placeholder="e.g. OPD, Pharmacy, Laboratory" />
+      <label>Type</label>
+      <select name="target_type" required>
+        <option value="revenue_target">Revenue target</option>
+        <option value="expense_budget">Expense budget</option>
+      </select>
+      <label>Amount (TZS)</label>
+      <input type="number" name="amount" min="0" step="0.01" required />
+    </div>
+    <div>
+      <label>Reporting period start</label>
+      <input type="date" name="period_start" required />
+      <label>Reporting period end</label>
+      <input type="date" name="period_end" required />
+      <button class="btn" style="margin-top:14px;">Save target / budget</button>
+    </div>
+  </form>
+  {% if targets %}
+  <table style="margin-top:16px;">
+    <tr><th>Period</th><th>Department</th><th>Type</th><th>Amount</th><th></th></tr>
+    {% for t in targets %}
+    <tr>
+      <td>{{ t.period_start }} → {{ t.period_end }}</td>
+      <td>{{ t.department }}</td>
+      <td>{{ "Revenue target" if t.target_type == "revenue_target" else "Expense budget" }}</td>
+      <td>{{ "{:,.0f}".format(t.amount) }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('delete_target', target_id=t.id) }}">
+          <button class="btn danger" style="padding:5px 12px; font-size:12px;">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted" style="margin-top:12px;">No targets/budgets set yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Generated reports ({{ reports|length }})</h2>
+  {% if reports %}
+  <table>
+    <tr><th>Period</th><th>Generated</th><th></th></tr>
+    {% for r in reports %}
+    <tr>
+      <td>{{ r.period_start }} → {{ r.period_end }}</td>
+      <td>{{ r.generated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>
+        <a href="{{ url_for('view_dashboard', report_id=r.id) }}">View</a>
+        ·
+        <a href="{{ url_for('print_report', report_id=r.id) }}">Print / PDF</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No reports generated yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Recent cleaned datasets</h2>
+  {% if datasets %}
+  <table>
+    <tr><th>Category</th><th>Period</th><th>Rows</th><th>Issues fixed</th><th>Download</th></tr>
+    {% for d in datasets %}
+    <tr>
+      <td>{{ d.category.name }}</td>
+      <td>{{ d.period_start }} → {{ d.period_end }}</td>
+      <td>{{ d.row_count }}</td>
+      <td>{{ d.missing_count }}</td>
+      <td><a href="{{ url_for('download_cleaned', dataset_id=d.id) }}">Excel</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">Staff have not saved any cleaned datasets yet.</p>
+  {% endif %}
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Staff accounts ({{ staff|length }})</h2>
+    <table>
+      <tr><th>Name</th><th>Email</th></tr>
+      {% for s in staff %}
+      <tr><td>{{ s.name }}</td><td>{{ s.email }}</td></tr>
+      {% endfor %}
+    </table>
+    <form method="POST" action="{{ url_for('add_staff') }}" style="margin-top:16px;">
+      <label>Name</label><input name="name" required />
+      <label>Email</label><input type="email" name="email" required />
+      <label>Password</label><input type="password" name="password" required minlength="6" />
+      <button class="btn" style="margin-top:14px;">Add staff</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>KPI categories ({{ categories|length }})</h2>
+    <p class="muted">Use <strong>Operations Dataset</strong> for Book1-style wide uploads.</p>
+    <table>
+      <tr><th>Category</th><th>Type</th><th></th></tr>
+      {% for c in categories %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ "default" if c.is_default else "custom" }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('delete_category', cat_id=c.id) }}">
+            <button class="btn danger" style="padding:5px 12px; font-size:12px;">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <form method="POST" action="{{ url_for('add_category') }}" style="margin-top:16px;">
+      <label>New KPI category name</label>
+      <input name="name" required placeholder="e.g. Bed Occupancy Rate" />
+      <button class="btn" style="margin-top:14px;">Add category</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Audit log (recent)</h2>
+  <p class="muted">Who did what — for accountability. No patient row contents are stored here.</p>
+  {% if audits %}
+  <table>
+    <tr><th>When</th><th>Action</th><th>Detail</th><th>User ID</th></tr>
+    {% for a in audits %}
+    <tr>
+      <td>{{ a.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ a.action }}</td>
+      <td>{{ a.detail }}</td>
+      <td>{{ a.user_id or '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No audit events yet.</p>
+  {% endif %}
+  <p style="margin-top:12px;"><a href="{{ url_for('uat_feedback') }}">Submit usability feedback →</a> · <a href="{{ url_for('privacy_policy') }}">Privacy policy</a></p>
+</div>
+<script>
+function applyMonthPreset(sel){
+  if(!sel.value) return;
+  const [start,end] = sel.value.split('|');
+  const form = sel.form;
+  const s = form.querySelector('[name="period_start"]');
+  const e = form.querySelector('[name="period_end"]');
+  if(s) s.value = start;
+  if(e) e.value = end;
+}
+</script>
+{% endblock %}

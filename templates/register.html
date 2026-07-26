@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Register your organization</h1>
+<p class="muted">Submit your polyclinic's details. A platform admin will review and approve your account before you can log in.</p>
+<div class="card" style="max-width:480px;">
+  <form method="POST">
+    <label>Organization (polyclinic) name</label>
+    <input name="org_name" required />
+    <label>Region</label>
+    <input name="region" required />
+    <label>Admin full name</label>
+    <input name="admin_name" required />
+    <label>Admin email</label>
+    <input type="email" name="email" required />
+    <label>Password</label>
+    <input type="password" name="password" required minlength="6" />
+    <button class="btn" style="margin-top:20px;">Submit for approval</button>
+  </form>
+</div>
+{% endblock %}
