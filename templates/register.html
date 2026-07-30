@@ -1,13 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Register your organization</h1>
-<p class="muted">Submit your polyclinic's details. A platform admin will review and approve your account before you can log in.</p>
+<p class="muted">
+  For <strong>organization administrators</strong> only. Staff accounts are created by your org admin —
+  if you already have a staff login, do not register a new organization; use <a href="{{ url_for('login') }}">Log in</a> instead.
+</p>
 <div class="card" style="max-width:480px;">
   <form method="POST">
     <label>Organization (polyclinic) name</label>
     <input name="org_name" required />
     <label>Region</label>
-    <input name="region" required />
+    <select name="region" required>
+      <option value="">— select region —</option>
+      {% for r in regions %}
+      <option value="{{ r }}">{{ r }}</option>
+      {% endfor %}
+    </select>
     <label>Admin full name</label>
     <input name="admin_name" required />
     <label>Admin email</label>

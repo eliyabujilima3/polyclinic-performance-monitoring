@@ -10,6 +10,61 @@
   <a class="btn secondary" href="{{ url_for('org_admin_dashboard') }}">Back</a>
 </p>
 
+<style>
+  .report-tabs{display:flex; gap:8px; margin:18px 0 20px; flex-wrap:wrap;}
+  .report-tabs button{
+    border:1.5px solid var(--card-line); background:#fff; color:var(--ink);
+    padding:10px 18px; border-radius:8px; font-weight:700; font-size:15px;
+    cursor:pointer; font-family:var(--font-body);
+  }
+  .report-tabs button.active{background:var(--teal); color:#fff; border-color:var(--teal);}
+  .report-pane{display:none;}
+  .report-pane.is-active{display:block;}
+  .rec-card{border-left:4px solid var(--teal); padding-left:16px; margin-bottom:18px;}
+  .rec-card.high{border-left-color:#9B2C2C;}
+  .rec-card.medium{border-left-color:#C45C26;}
+  .rec-card.low{border-left-color:#5A6B78;}
+  .rec-priority{
+    display:inline-block; font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.04em; margin-bottom:6px; color:var(--muted);
+  }
+  .rec-card ul{margin:8px 0 0; padding-left:18px;}
+  .rec-card li{margin-bottom:4px;}
+</style>
+
+<div class="report-tabs" role="tablist">
+  <button type="button" class="active" data-pane="report-overview" role="tab">Report</button>
+  <button type="button" data-pane="report-recs" role="tab">Recommendations{% if recommendations %} ({{ recommendations|length }}){% endif %}</button>
+</div>
+
+<div id="report-recs" class="report-pane">
+  <div class="card">
+    <h2>Recommendations — what to do next</h2>
+    <p class="muted">
+      Rule-based guidance from this period’s numbers (diagnoses, waiting time, profit, targets).
+      Not an AI diagnosis — clinical decisions remain with your care team.
+    </p>
+    {% if recommendations %}
+      {% for r in recommendations %}
+      <div class="rec-card {{ r.priority }}">
+        <div class="rec-priority">{{ r.priority }} priority</div>
+        <h3 style="margin:0 0 6px; font-size:1.15rem;">{{ r.title }}</h3>
+        <p class="muted" style="margin:0;">{{ r.reason }}</p>
+        <ul>
+          {% for a in r.actions %}
+          <li>{{ a }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted">No strong alerts for this period. Keep monitoring top diagnoses, waiting times, and targets.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div id="report-overview" class="report-pane is-active">
+
 {% for cat_name, cat in summary.items() %}
 <div class="card">
   <h2>{{ cat_name }}</h2>
@@ -253,4 +308,21 @@
   {% endif %}
 </div>
 {% endfor %}
+
+</div>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll('.report-tabs button');
+  tabs.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      tabs.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.report-pane').forEach(function(p){ p.classList.remove('is-active'); });
+      var pane = document.getElementById(btn.getAttribute('data-pane'));
+      if(pane) pane.classList.add('is-active');
+    });
+  });
+})();
+</script>
 {% endblock %}

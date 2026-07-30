@@ -4,18 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{% block title %}Polyclinic Reporting Platform{% endblock %}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,560;8..60,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    /* Professional slate + steel teal (healthcare ops look) */
-    --teal:#1F5C6B; --seafoam:#2F7A7B; --mint:#3D8B7A; --dark:#142833;
-    --ink:#1A2332; --muted:#5A6B78; --bg:#F3F6F8; --card:#E8EEF1;
-    --card-line:#D0DBE2; --white:#FFFFFF; --accent:#C45C26;
-    --font-head:"Source Serif 4", "Iowan Old Style", Georgia, serif;
-    --font-body:"Source Sans 3", "Segoe UI", sans-serif;
-    --font-data:"Source Sans 3", Consolas, monospace;
+    /* PPT landing blue + white (from #0D6EFD) */
+    --teal:#0D6EFD; --seafoam:#3D8BFD; --mint:#6EA8FE; --dark:#0A3D91;
+    --ink:#1A2332; --muted:#5A6B78; --bg:#FFFFFF; --card:#F0F6FF;
+    --card-line:#D6E4FF; --white:#FFFFFF; --accent:#0A58CA;
+    --font-head:"Times New Roman", Times, Georgia, serif;
+    --font-body:Georgia, "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    --font-data:Consolas, "Courier New", monospace;
   }
   *{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -27,31 +24,31 @@
   a{color:var(--teal); text-decoration:none; font-weight:600;}
   a:hover{color:var(--dark);}
   nav{
-    background:var(--dark); color:#fff; padding:18px 34px; display:flex;
+    background:var(--teal); color:#fff; padding:18px 34px; display:flex;
     align-items:center; justify-content:space-between; position:sticky; top:0; z-index:20;
   }
   nav .brand{font-family:var(--font-head); font-size:21px; font-weight:700; letter-spacing:0.01em;}
   nav .links{display:flex; align-items:center; flex-wrap:wrap; gap:4px 0;}
-  nav .links a{color:#C5D7DF; margin-left:18px; font-size:15.5px; font-weight:600;}
+  nav .links a{color:#E8F1FF; margin-left:18px; font-size:15.5px; font-weight:600;}
   nav .links a:hover{color:#fff;}
   .wrap{max-width:1080px; margin:0 auto; padding:40px 26px 72px; width:100%; flex:1;}
   h1{font-family:var(--font-head); color:var(--dark); font-size:30px; font-weight:700; letter-spacing:-0.01em; margin:0 0 12px;}
   h2{font-family:var(--font-head); color:var(--dark); font-size:22px; font-weight:700; margin:0 0 10px;}
   h3{font-family:var(--font-head); font-weight:650;}
   p{margin:0 0 12px;}
-  .card{background:#fff; border:1px solid var(--card-line); border-radius:10px; padding:28px 28px; margin-bottom:22px;}
+  .card{background:#fff; border:1px solid var(--card-line); border-radius:10px; padding:28px 28px; margin-bottom:22px; box-shadow:0 1px 2px rgba(13,110,253,.04);}
   .btn{
     display:inline-block; background:var(--teal); color:#fff; border:none; padding:12px 22px;
     border-radius:7px; font-weight:700; font-size:15.5px; cursor:pointer; font-family:var(--font-body);
     transition: transform .18s ease, background .18s ease;
   }
   .btn:hover{background:var(--dark); transform:translateY(-1px); color:#fff;}
-  .btn.secondary{background:transparent; color:var(--teal); border:1.5px solid var(--teal);}
-  .btn.secondary:hover{background:rgba(31,92,107,.08); color:var(--dark); border-color:var(--dark);}
+  .btn.secondary{background:#fff; color:var(--teal); border:1.5px solid var(--teal);}
+  .btn.secondary:hover{background:rgba(13,110,253,.08); color:var(--dark); border-color:var(--dark);}
   .btn.danger{background:#9B2C2C;}
-  .btn.light{background:#fff; color:var(--dark);}
-  .btn.ghost-light{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.55);}
-  .btn.ghost-light:hover{background:rgba(255,255,255,.12); border-color:#fff;}
+  .btn.light{background:#fff; color:var(--teal);}
+  .btn.ghost-light{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.7);}
+  .btn.ghost-light:hover{background:rgba(255,255,255,.14); border-color:#fff;}
   label{display:block; font-size:14.5px; font-weight:650; color:var(--muted); margin:14px 0 6px;}
   input, select{
     width:100%; padding:11px 13px; border:1.5px solid var(--card-line); border-radius:7px; font-size:15.5px;
@@ -63,10 +60,10 @@
   td{font-family:var(--font-data); font-variant-numeric:tabular-nums;}
   .pill{display:inline-block; padding:4px 12px; border-radius:999px; font-size:13px; font-weight:700;}
   .pill.pending{background:#F3E2C8; color:#7A5410;}
-  .pill.approved{background:#D5E8E2; color:#1F5C48;}
+  .pill.approved{background:#D6E4FF; color:#0A3D91;}
   .pill.rejected{background:#F0D4D2; color:#8A2E28;}
   .flash{padding:14px 16px; border-radius:8px; margin-bottom:16px; font-size:15px;}
-  .flash.success{background:#D5E8E2; color:#1F5C48;}
+  .flash.success{background:#D6E4FF; color:#0A3D91;}
   .flash.error{background:#F0D4D2; color:#8A2E28;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
   .statgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:14px 0;}
@@ -78,8 +75,8 @@
   /* ----- site footer ----- */
   .site-footer{
     margin-top:auto;
-    background:linear-gradient(180deg, #1B3542 0%, var(--dark) 100%);
-    color:#D7E4EA;
+    background:linear-gradient(180deg, #0D6EFD 0%, #0A3D91 100%);
+    color:#E8F1FF;
     padding:52px 24px 30px;
   }
   .site-footer .foot-inner{
@@ -89,48 +86,53 @@
   .site-footer h3{
     font-family:var(--font-head); color:#fff; font-size:19px; margin:0 0 12px; font-weight:700;
   }
-  .site-footer p, .site-footer li{font-size:15px; line-height:1.55; margin:0 0 8px; color:#B7C9D2;}
-  .site-footer a{color:#8FCDD0; font-weight:600;}
-  .site-footer a:hover{color:#fff;}
+  .site-footer p, .site-footer li{font-size:15px; line-height:1.55; margin:0 0 8px; color:#D6E4FF;}
+  .site-footer a{color:#fff; font-weight:600; text-decoration:underline; text-underline-offset:3px;}
+  .site-footer a:hover{color:#fff; opacity:.9;}
   .site-footer ul{list-style:none; padding:0; margin:0;}
   .site-footer .foot-bottom{
     max-width:1080px; margin:28px auto 0; padding-top:18px;
-    border-top:1px solid rgba(255,255,255,.12);
+    border-top:1px solid rgba(255,255,255,.22);
     display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
-    font-size:13.5px; color:#8FA3AE;
+    font-size:13.5px; color:#C5D9FF;
   }
 
   /* ----- landing hero ----- */
   .hero{
     position:relative; overflow:hidden; color:#fff;
-    min-height:min(88vh, 720px);
-    display:flex; align-items:flex-end;
+    min-height:min(68vh, 560px);
+    display:flex; align-items:flex-start;
     background:
-      radial-gradient(ellipse 80% 60% at 85% 15%, rgba(61,139,122,.28), transparent 55%),
-      radial-gradient(ellipse 60% 50% at 10% 80%, rgba(31,92,107,.35), transparent 50%),
-      linear-gradient(145deg, #0E1F28 0%, #142833 45%, #1F4554 100%);
+      radial-gradient(ellipse 80% 60% at 85% 15%, rgba(110,168,254,.35), transparent 55%),
+      radial-gradient(ellipse 60% 50% at 10% 80%, rgba(13,110,253,.45), transparent 50%),
+      linear-gradient(145deg, #0A58CA 0%, #0D6EFD 48%, #3D8BFD 100%);
   }
   .hero::before{
-    content:""; position:absolute; inset:0; opacity:.22; pointer-events:none;
+    content:""; position:absolute; inset:0; opacity:.16; pointer-events:none;
     background-image:
-      linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
     background-size:48px 48px;
     mask-image:linear-gradient(180deg, #000 30%, transparent 95%);
   }
   .hero-inner{
     position:relative; z-index:1; width:100%; max-width:1040px; margin:0 auto;
-    padding:72px 24px 64px;
+    padding:48px 24px 52px;
   }
   .hero-brand{
-    font-family:var(--font-head); font-size:clamp(2.6rem, 6.2vw, 4.4rem);
-    font-weight:700; line-height:1.05; margin:0 0 18px;
+    font-family:var(--font-head); font-size:clamp(2.4rem, 5.5vw, 3.8rem);
+    font-weight:700; line-height:1.08; margin:0 0 16px;
     animation: rise .7s ease both;
   }
   .hero-line{
-    font-size:clamp(1.15rem, 2.3vw, 1.45rem); font-weight:500; max-width:36ch;
-    color:#D5E4EA; margin:0 0 28px; line-height:1.5;
+    font-size:clamp(1.05rem, 2vw, 1.3rem); font-weight:500; max-width:48ch;
+    color:#F0F6FF; margin:0 0 14px; line-height:1.55;
     animation: rise .7s ease .12s both;
+  }
+  .hero-sub{
+    font-size:clamp(0.95rem, 1.6vw, 1.08rem); font-weight:400; max-width:52ch;
+    color:#D6E4FF; margin:0 0 26px; line-height:1.55;
+    animation: rise .7s ease .16s both;
   }
   .hero-ctas{display:flex; flex-wrap:wrap; gap:12px; animation: rise .7s ease .22s both;}
   @keyframes rise{
@@ -161,8 +163,8 @@
   .split-band{
     margin:40px 0 0; padding:44px 0;
     background:
-      linear-gradient(90deg, rgba(31,92,107,.08), rgba(61,139,122,.05)),
-      repeating-linear-gradient(-12deg, transparent, transparent 12px, rgba(20,40,51,.03) 12px, rgba(20,40,51,.03) 13px);
+      linear-gradient(90deg, rgba(13,110,253,.07), rgba(61,139,253,.04)),
+      #F8FBFF;
     border-block:1px solid var(--card-line);
   }
   .split-band .inner{max-width:1080px; margin:0 auto; padding:0 26px;}
@@ -177,31 +179,109 @@
   .home-cta h2{margin:0 0 10px;}
   .home-cta p{margin:0 auto 22px; max-width:42ch; color:var(--muted);}
 
+  /* ----- staff / org-admin app shell ----- */
+  .app-topbar{
+    background:var(--teal); color:#fff; padding:14px 22px; display:flex;
+    align-items:center; justify-content:space-between; position:sticky; top:0; z-index:30;
+    gap:12px; flex-wrap:wrap;
+  }
+  .app-topbar .brand{font-family:var(--font-head); font-size:19px; font-weight:700; color:#fff;}
+  .app-topbar .user-meta{color:#E8F1FF; font-size:14.5px; font-weight:600;}
+  .app-topbar a.logout{color:#fff; font-size:14.5px; font-weight:600; margin-left:14px; opacity:.9;}
+  .app-topbar a.logout:hover{opacity:1;}
+  .app-shell{
+    display:flex; flex:1; min-height:0; width:100%; background:#fff;
+  }
+  .app-sidebar{
+    width:240px; flex-shrink:0; background:#fff; border-right:1px solid var(--card-line);
+    padding:22px 14px; position:sticky; top:56px; align-self:flex-start;
+    height:calc(100vh - 56px); overflow-y:auto;
+  }
+  .app-sidebar .side-label{
+    font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--muted); margin:0 10px 10px;
+  }
+  .app-sidebar a{
+    display:block; padding:10px 12px; border-radius:8px; color:var(--ink);
+    font-weight:600; font-size:15px; margin-bottom:2px;
+  }
+  .app-sidebar a:hover{background:rgba(13,110,253,.08); color:var(--dark);}
+  .app-sidebar a.active{
+    background:rgba(13,110,253,.12); color:var(--teal);
+  }
+  .app-main{
+    flex:1; min-width:0; padding:32px 28px 56px; max-width:960px; background:#fff;
+  }
+  .dash-panel{display:none;}
+  .dash-panel.is-active{display:block;}
+
   @media (max-width:820px){
     .grid2, .flow, .role-list, .site-footer .foot-inner{grid-template-columns:1fr;}
     .statgrid{grid-template-columns:1fr;}
     nav{padding:14px 18px;}
     nav .links a{margin-left:12px; font-size:13px;}
-    .hero{min-height:72vh; align-items:center;}
-    .hero-inner{padding:56px 20px 48px;}
+    .hero{min-height:58vh;}
+    .hero-inner{padding:36px 20px 40px;}
+    .app-shell{flex-direction:column;}
+    .app-sidebar{
+      width:100%; height:auto; position:static; border-right:none;
+      border-bottom:1px solid var(--card-line); padding:12px 14px;
+      display:flex; flex-wrap:nowrap; gap:6px; overflow-x:auto;
+      align-items:center;
+    }
+    .app-sidebar .side-label{display:none;}
+    .app-sidebar a{
+      white-space:nowrap; margin-bottom:0; flex-shrink:0;
+      padding:8px 12px; font-size:14px;
+    }
+    .app-main{padding:24px 16px 48px;}
   }
 </style>
 {% block extra_css %}{% endblock %}
 </head>
 <body>
+{% set use_app_shell = current_user and current_user.role in ['staff', 'org_admin'] %}
+
+{% if use_app_shell %}
+<nav class="app-topbar">
+  <a class="brand" href="{{ url_for('index') }}">Polyclinic Reporting Platform</a>
+  <div>
+    <span class="user-meta">{{ current_user.name }} ({{ current_user.role.replace('_',' ') }})</span>
+    <a class="logout" href="{{ url_for('logout') }}">Log out</a>
+  </div>
+</nav>
+<div class="app-shell">
+  <aside class="app-sidebar" id="app-sidebar">
+    {% block sidebar %}
+      {% if current_user.role == 'staff' %}
+        <p class="side-label">Staff</p>
+        <a href="{{ url_for('staff_dashboard') }}#upload" data-panel="upload" class="{% if request.endpoint == 'staff_dashboard' %}js-panel-link{% endif %}">Upload dataset</a>
+        <a href="{{ url_for('manual_entry') }}" class="{% if request.endpoint == 'manual_entry' %}active{% endif %}">Enter data manually</a>
+        <a href="{{ url_for('staff_dashboard') }}#datasets" data-panel="datasets" class="{% if request.endpoint == 'staff_dashboard' %}js-panel-link{% endif %}">Cleaned datasets</a>
+        <a href="{{ url_for('uat_feedback') }}" class="{% if request.endpoint == 'uat_feedback' %}active{% endif %}">Feedback</a>
+      {% elif current_user.role == 'org_admin' %}
+        <p class="side-label">Organization</p>
+        <a href="{{ url_for('org_admin_dashboard') }}#alerts" data-panel="alerts" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Alerts</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#generate" data-panel="generate" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Generate report</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#targets" data-panel="targets" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Targets &amp; budgets</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#reports" data-panel="reports" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Generated reports</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#datasets" data-panel="datasets" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Cleaned datasets</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#staff" data-panel="staff" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Staff accounts</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#categories" data-panel="categories" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">KPI categories</a>
+        <a href="{{ url_for('org_admin_dashboard') }}#audit" data-panel="audit" class="{% if request.endpoint == 'org_admin_dashboard' %}js-panel-link{% endif %}">Audit log</a>
+        <a href="{{ url_for('uat_feedback') }}" class="{% if request.endpoint == 'uat_feedback' %}active{% endif %}">Feedback</a>
+      {% endif %}
+    {% endblock %}
+  </aside>
+  <main class="app-main">
+{% else %}
 <nav>
   <a class="brand" href="{{ url_for('index') }}" style="color:#fff;">Polyclinic Reporting Platform</a>
   <div class="links">
     {% if current_user %}
-      <span class="muted" style="color:#8FCFC7;">{{ current_user.name }} ({{ current_user.role.replace('_',' ') }})</span>
+      <span class="muted" style="color:#E8F1FF;">{{ current_user.name }} ({{ current_user.role.replace('_',' ') }})</span>
       {% if current_user.role == 'super_admin' %}
         <a href="{{ url_for('super_admin_dashboard') }}">Platform</a>
-      {% elif current_user.role == 'org_admin' %}
-        <a href="{{ url_for('org_admin_dashboard') }}">Org admin</a>
-        <a href="{{ url_for('uat_feedback') }}">Feedback</a>
-      {% elif current_user.role == 'staff' %}
-        <a href="{{ url_for('staff_dashboard') }}">Data entry</a>
-        <a href="{{ url_for('uat_feedback') }}">Feedback</a>
       {% endif %}
       <a href="{{ url_for('logout') }}">Log out</a>
     {% else %}
@@ -213,41 +293,86 @@
     {% endif %}
   </div>
 </nav>
-
 {% block hero %}{% endblock %}
-
 <div class="{% block wrap_class %}wrap{% endblock %}">
+{% endif %}
+
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
       <div class="flash {{ category }}">{{ message }}</div>
     {% endfor %}
   {% endwith %}
   {% block content %}{% endblock %}
+
+{% if use_app_shell %}
+  </main>
 </div>
+<script>
+(function(){
+  var panels = document.querySelectorAll('.dash-panel');
+  if(!panels.length) return;
+  var links = document.querySelectorAll('#app-sidebar a.js-panel-link');
+
+  function showPanel(id){
+    var found = false;
+    panels.forEach(function(p){
+      var on = p.id === id;
+      p.classList.toggle('is-active', on);
+      if(on) found = true;
+    });
+    if(!found && panels[0]){
+      panels[0].classList.add('is-active');
+      id = panels[0].id;
+    }
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('data-panel') === id);
+    });
+  }
+
+  function fromHash(){
+    var id = (location.hash || '').replace(/^#/, '');
+    if(!id || !document.getElementById(id)){
+      id = panels[0] ? panels[0].id : '';
+    }
+    showPanel(id);
+  }
+
+  links.forEach(function(a){
+    a.addEventListener('click', function(e){
+      var id = a.getAttribute('data-panel');
+      if(!id || !document.getElementById(id)) return;
+      e.preventDefault();
+      if(history.replaceState) history.replaceState(null, '', '#' + id);
+      else location.hash = id;
+      showPanel(id);
+    });
+  });
+
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
+})();
+</script>
+{% else %}
+</div>
+{% endif %}
 
 <footer class="site-footer" id="contact">
   <div class="foot-inner">
     <div>
       <h3>Polyclinic Reporting Platform</h3>
       <p>Healthcare performance monitoring and reporting for Tanzanian polyclinics — clean data, clear dashboards, evidence-based decisions.</p>
-      <p>EASTC · Bachelor of Data Science · Group 05 · 2025/2026</p>
     </div>
     <div>
       <h3>Contact</h3>
       <ul>
         <li>Email: <a href="mailto:support@polyclinicreports.tz">support@polyclinicreports.tz</a></li>
-        <li>Phone: <a href="tel:+255754000120">+255 754 000 120</a></li>
-        <li>WhatsApp: <a href="https://wa.me/255754000120">+255 754 000 120</a></li>
+        <li>Phone: <a href="tel:+255616645051">+255 616 645 051</a></li>
+        <li>WhatsApp: <a href="https://wa.me/255616645051">+255 616 645 051</a></li>
       </ul>
-    </div>
-    <div>
-      <h3>Institution</h3>
-      <p>Eastern Africa Statistical Training Centre (EASTC)<br>Data Science Department<br>Dar es Salaam, Tanzania</p>
-      <p>Supervisor: Mr. Christopher Kalolo</p>
     </div>
   </div>
   <div class="foot-bottom">
-    <span>© 2026 Polyclinic Reporting Platform · Group 05</span>
+    <span>© 2026 Polyclinic Reporting Platform </span>
     <span>Designed for healthcare performance monitoring in Tanzania</span>
   </div>
 </footer>

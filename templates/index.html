@@ -7,6 +7,7 @@
   <div class="hero-inner">
     <p class="hero-brand">Polyclinic Reporting Platform</p>
     <p class="hero-line">Turn messy clinic data into clean insights and performance reports — for every polyclinic, separately.</p>
+    <p class="hero-sub">Built for Tanzanian polyclinics: staff upload or enter operational data, the system cleans and reviews it, then organization admins generate targets, dashboards, and printable reports — each clinic’s data stays private.</p>
     <div class="hero-ctas">
       {% if current_user %}
         {% if current_user.role == 'super_admin' %}
@@ -54,11 +55,11 @@
     <div class="role-list">
       <div>
         <h3>Staff</h3>
-        <p>Enter or upload operational data, review corrections, and download the cleaned file.</p>
+        <p>Enter or upload operational data, review corrections, and download the cleaned file. Staff accounts are created by your organization admin — not by self-registration.</p>
       </div>
       <div>
         <h3>Organization admin</h3>
-        <p>Manage staff, set targets and budgets, generate dashboards, and download printable reports.</p>
+        <p>Register the polyclinic, manage staff, set targets and budgets, generate dashboards, and download printable reports.</p>
       </div>
       <div>
         <h3>Platform admin</h3>
@@ -71,9 +72,12 @@
 <div class="wrap" style="padding-top:0;">
   <section class="home-cta">
     <h2>Ready to monitor performance?</h2>
-    <p>Register your polyclinic, wait for platform approval, then start uploading period data.</p>
+    <p>Organization admins register the polyclinic and wait for platform approval. Staff should log in with the account their admin created.</p>
     <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      {% if not current_user %}
       <a class="btn" href="{{ url_for('register') }}">Register organization</a>
+      <a class="btn secondary" href="{{ url_for('login') }}">Log in</a>
+      {% endif %}
       <a class="btn secondary" href="#contact">Contact support</a>
     </div>
   </section>

@@ -7,10 +7,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-TEAL = "#1F5C6B"
-MINT = "#3D8B7A"
+TEAL = "#0D6EFD"
+MINT = "#3D8BFD"
 CORAL = "#B85C38"
-SLATE = "#243B4A"
+SLATE = "#0A3D91"
 
 # Default assumption for recommending next-period targets when no explicit
 # target-growth policy is supplied. This is intentionally transparent and
@@ -498,3 +498,287 @@ def build_simple_forecast(history):
         "last_period": last.get("period_label"),
         "note": "Simple average growth forecast (±25% cap). For planning only — not a clinical prediction.",
     }
+
+
+# ---------------------------------------------------------------------------
+# Rule-based recommendations (no AI) — actionable next steps from report data
+# ---------------------------------------------------------------------------
+DIAGNOSIS_PLAYBOOK = [
+    ("malaria", "High malaria cases", [
+        "Confirm RDT/microscopy stock and ACT medicines for the next 2–4 weeks.",
+        "Brief clinicians on fever case management and severe malaria referral criteria.",
+        "Increase ITN / prevention messaging in the catchment area and nearby schools.",
+    ]),
+    ("uti", "High urinary tract infection (UTI) cases", [
+        "Review antibiotic choice against local sensitivity patterns; avoid unnecessary broad-spectrum use.",
+        "Counsel patients on hydration and hygiene; check laboratory turnaround for urine tests.",
+        "Flag recurrent UTIs for clinician follow-up.",
+    ]),
+    ("urinary", "High urinary tract infection (UTI) cases", [
+        "Review antibiotic choice against local sensitivity patterns; avoid unnecessary broad-spectrum use.",
+        "Counsel patients on hydration and hygiene; check laboratory turnaround for urine tests.",
+    ]),
+    ("pneumonia", "High pneumonia / lower respiratory cases", [
+        "Ensure oxygen, nebulizers, and first-line antibiotics are available.",
+        "Prioritize vulnerable groups (children under 5, elderly) for early review.",
+        "Check cold/flu season staffing in OPD and emergency triage.",
+    ]),
+    ("diarr", "High diarrheal disease cases", [
+        "Stock ORS, zinc (for children), and IV fluids; reinforce hand-hygiene messaging.",
+        "Ask about water source / food exposure when volumes spike — consider public-health notice.",
+        "Isolate severe dehydration cases and monitor referral pathways.",
+    ]),
+    ("typhoid", "High typhoid cases", [
+        "Confirm lab capacity for blood culture / rapid tests where available.",
+        "Reinforce safe water and food hygiene counseling.",
+        "Review antibiotic stewardship for enteric fever.",
+    ]),
+    ("hypertens", "High hypertension-related visits", [
+        "Strengthen BP screening at every visit and medication refill adherence counseling.",
+        "Ensure antihypertensive stock and schedule NCD clinic slots.",
+        "Offer lifestyle counseling (salt, exercise, follow-up dates).",
+    ]),
+    ("diabet", "High diabetes-related visits", [
+        "Check glucometer strips and insulin/oral medicine stock.",
+        "Expand diabetes education and foot-care screening this month.",
+        "Track missed follow-ups and call back high-risk patients.",
+    ]),
+    ("tubercul", "TB-related cases present", [
+        "Ensure TB screening questions at OPD; link positives to DOT / district TB coordinator.",
+        "Protect staff with cough triage and ventilation practices.",
+    ]),
+    ("tb", "TB-related cases present", [
+        "Ensure TB screening questions at OPD; link positives to DOT / district TB coordinator.",
+        "Protect staff with cough triage and ventilation practices.",
+    ]),
+    ("hiv", "HIV-related care volume", [
+        "Confirm ART stock and viral-load / testing referral links.",
+        "Reinforce confidentiality and retention in care.",
+    ]),
+    ("anemia", "High anemia cases", [
+        "Check iron/folate stock and dietary counseling materials.",
+        "Investigate common causes (nutrition, malaria, pregnancy) in this period.",
+    ]),
+    ("pregnan", "High pregnancy / ANC-related contacts", [
+        "Verify ANC supplies, TT vaccines, and iron/folate stock.",
+        "Remind mothers of danger signs and skilled delivery planning.",
+    ]),
+    ("antenatal", "High pregnancy / ANC-related contacts", [
+        "Verify ANC supplies, TT vaccines, and iron/folate stock.",
+        "Remind mothers of danger signs and skilled delivery planning.",
+    ]),
+    ("respiratory", "High respiratory illness", [
+        "Reinforce triage for breathing difficulty; stock symptomatic care medicines.",
+        "Advise on smoke exposure and when to return urgently.",
+    ]),
+    ("urti", "High upper respiratory infections", [
+        "Avoid unnecessary antibiotics for viral URTI; focus on counseling and follow-up advice.",
+        "Monitor for secondary bacterial infection in children and elderly.",
+    ]),
+]
+
+
+def _match_diagnosis_playbook(label):
+    text = str(label or "").strip().lower()
+    for keyword, title, actions in DIAGNOSIS_PLAYBOOK:
+        if keyword in text:
+            return title, actions
+    return None, None
+
+
+def build_recommendations(summary):
+    """
+    Derive practical next-step recommendations from a generated report summary.
+    Rule-based only (thresholds + diagnosis playbook) — no AI required.
+    Returns a list of {priority, title, reason, actions[]}.
+    """
+    recs = []
+    if not isinstance(summary, dict):
+        return recs
+
+    for cat_name, cat in summary.items():
+        if not isinstance(cat, dict):
+            continue
+        sections = cat.get("sections") or {}
+
+        # --- Diagnoses ---
+        diag = sections.get("diagnoses") or {}
+        rows = diag.get("rows") or []
+        if rows:
+            top = rows[0]
+            label = top.get("label", "")
+            pct = float(top.get("pct") or 0)
+            count = int(top.get("count") or 0)
+            if pct >= 15 or (count >= 3 and pct >= 10):
+                title, actions = _match_diagnosis_playbook(label)
+                if not title:
+                    title = f"Leading diagnosis: {label}"
+                    actions = [
+                        f"Review clinical protocols and medicine stock for “{label}”.",
+                        "Check whether this spike is seasonal or linked to a specific department/residence.",
+                        "Brief the clinical team on case definition, referral, and patient education.",
+                    ]
+                priority = "high" if pct >= 25 else "medium"
+                recs.append({
+                    "priority": priority,
+                    "title": title,
+                    "reason": f"“{label}” is {pct}% of recorded diagnoses in {cat_name} ({count} cases).",
+                    "actions": actions,
+                })
+            # Second diagnosis if also notable
+            if len(rows) > 1:
+                second = rows[1]
+                spct = float(second.get("pct") or 0)
+                if spct >= 20:
+                    stitle, sactions = _match_diagnosis_playbook(second.get("label"))
+                    if stitle and sactions:
+                        recs.append({
+                            "priority": "medium",
+                            "title": stitle,
+                            "reason": f"“{second.get('label')}” is also elevated at {spct}% in {cat_name}.",
+                            "actions": sactions,
+                        })
+
+        # --- Patient flow / waiting ---
+        flow = sections.get("patient_flow") or {}
+        wait = flow.get("avg_waiting_min")
+        if wait is not None and float(wait) >= 45:
+            recs.append({
+                "priority": "high" if float(wait) >= 60 else "medium",
+                "title": "Long average waiting time",
+                "reason": f"Average waiting time is {wait} minutes in {cat_name}.",
+                "actions": [
+                    "Review triage and appointment slots during peak hours.",
+                    "Add temporary staff or shift breaks to cover bottlenecks.",
+                    "Communicate expected wait times and open a fast track for urgent cases.",
+                ],
+            })
+        beds = flow.get("avg_bed_occupancy")
+        if beds is not None and float(beds) >= 85:
+            recs.append({
+                "priority": "medium",
+                "title": "High bed occupancy",
+                "reason": f"Average bed occupancy is {beds}% in {cat_name}.",
+                "actions": [
+                    "Review discharge planning and referral options for non-critical admissions.",
+                    "Prepare overflow / day-care capacity if occupancy stays high.",
+                ],
+            })
+
+        # --- Profit & loss ---
+        pl = sections.get("profit_loss") or {}
+        if pl:
+            profit = float(pl.get("profit") or 0)
+            margin = pl.get("profit_margin_pct")
+            expense_ratio = pl.get("expense_ratio_pct")
+            if profit < 0:
+                recs.append({
+                    "priority": "high",
+                    "title": "Operating loss this period",
+                    "reason": f"{cat_name} shows a loss of {profit:,.0f} TZS.",
+                    "actions": [
+                        "Compare department revenue vs expenses and cut non-essential spending.",
+                        "Review fee collection leakage and unpaid bills.",
+                        "Set a recovery target for the next reporting period.",
+                    ],
+                })
+            elif margin is not None and float(margin) < 5:
+                recs.append({
+                    "priority": "medium",
+                    "title": "Thin profit margin",
+                    "reason": f"Profit margin is only {margin}% in {cat_name}.",
+                    "actions": [
+                        "Identify high-cost departments and renegotiate supplier prices where possible.",
+                        "Protect high-margin services while improving volume carefully.",
+                    ],
+                })
+            if expense_ratio is not None and float(expense_ratio) >= 90:
+                recs.append({
+                    "priority": "medium",
+                    "title": "Expenses consuming most of revenue",
+                    "reason": f"Expenses are {expense_ratio}% of revenue in {cat_name}.",
+                    "actions": [
+                        "Freeze non-urgent purchases until the next budget review.",
+                        "Track weekly cash burn by department.",
+                    ],
+                })
+
+        # --- Targets ---
+        targets = sections.get("targets") or {}
+        for row in targets.get("revenue_rows") or []:
+            pct = row.get("pct_achieved")
+            if pct is not None and float(pct) < 80:
+                recs.append({
+                    "priority": "medium",
+                    "title": f"Revenue below target — {row.get('department')}",
+                    "reason": f"{row.get('department')} achieved {pct}% of its revenue target.",
+                    "actions": [
+                        "Review service mix and marketing for that department.",
+                        "Check staffing and opening hours that may limit volume.",
+                    ],
+                })
+        for row in targets.get("expense_rows") or []:
+            pct = row.get("pct_used")
+            if pct is not None and float(pct) > 110:
+                recs.append({
+                    "priority": "high",
+                    "title": f"Budget overrun — {row.get('department')}",
+                    "reason": f"{row.get('department')} used {pct}% of its expense budget.",
+                    "actions": [
+                        "Require approval for further spending in that department.",
+                        "Investigate unusual cost drivers (supplies, overtime, utilities).",
+                    ],
+                })
+
+        # --- Experience ---
+        exp = sections.get("experience") or {}
+        avg = exp.get("average")
+        if avg is not None and float(avg) < 3:
+            recs.append({
+                "priority": "medium",
+                "title": "Low patient experience rating",
+                "reason": f"Average experience rating is {avg} in {cat_name}.",
+                "actions": [
+                    "Hold a short staff huddle on courtesy, waiting communication, and cleanliness.",
+                    "Sample 5 recent complaints and close them within the week.",
+                ],
+            })
+
+        # --- Compliance ---
+        compliance = sections.get("compliance") or {}
+        for row in compliance.get("rows") or []:
+            label = str(row.get("label") or "").lower()
+            pct = float(row.get("pct") or 0)
+            if any(x in label for x in ("non", "fail", "expired", "not compliant", "pending")) and pct >= 15:
+                recs.append({
+                    "priority": "high",
+                    "title": "Compliance gaps detected",
+                    "reason": f"“{row.get('label')}” is {pct}% of compliance records in {cat_name}.",
+                    "actions": [
+                        "Assign an owner to close each non-compliant item before the next audit.",
+                        "Update the compliance checklist and training for the affected area.",
+                    ],
+                })
+
+        # --- Data quality ---
+        q = cat.get("quality_score")
+        if q is not None and float(q) < 70:
+            recs.append({
+                "priority": "low",
+                "title": "Data quality needs attention",
+                "reason": f"Quality score for {cat_name} is {q}/100.",
+                "actions": [
+                    "Retrain staff on required columns and period dates before the next upload.",
+                    "Prefer the Operations Dataset template to reduce cleaning corrections.",
+                ],
+            })
+
+    # Deduplicate by title (keep highest priority)
+    order = {"high": 0, "medium": 1, "low": 2}
+    best = {}
+    for r in recs:
+        t = r["title"]
+        if t not in best or order.get(r["priority"], 9) < order.get(best[t]["priority"], 9):
+            best[t] = r
+    return sorted(best.values(), key=lambda r: order.get(r["priority"], 9))
+

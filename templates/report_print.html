@@ -36,10 +36,27 @@
 
 <p><strong>Contents</strong></p>
 <ol>
+  <li>Recommendations</li>
   {% for cat_name, cat in summary.items() %}
   <li>{{ cat_name }}</li>
   {% endfor %}
 </ol>
+
+<h2>Recommendations — what to do next</h2>
+<p class="muted">Rule-based guidance from this period’s data. Not an AI clinical diagnosis.</p>
+{% if recommendations %}
+  {% for r in recommendations %}
+  <h3>{{ r.title }} <span class="muted">({{ r.priority }})</span></h3>
+  <p class="muted">{{ r.reason }}</p>
+  <ul>
+    {% for a in r.actions %}
+    <li>{{ a }}</li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+{% else %}
+<p class="muted">No strong alerts for this period.</p>
+{% endif %}
 
 {% for cat_name, cat in summary.items() %}
   <h2>{{ cat_name }}</h2>

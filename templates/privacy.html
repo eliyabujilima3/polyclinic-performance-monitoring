@@ -3,18 +3,17 @@
 <h1>Privacy &amp; ethics</h1>
 <div class="card">
   <h2>What this platform stores</h2>
-  <p>This system is for <strong>organizational performance monitoring</strong> using aggregate operational data (department revenue, patient volumes, diagnoses counts, feedback categories, etc.).</p>
-  <h2>What must not be uploaded</h2>
+  <p>This system supports organizational performance monitoring. Uploads may include operational data and, when present, personal columns.</p>
+  <h2>Anonymization</h2>
   <ul>
-    <li>Patient names, phone numbers, emails, national IDs / NIDA, passport numbers</li>
-    <li>Medical record numbers (MRN), home addresses, next-of-kin details</li>
-    <li>Photos, fingerprints, or other direct identifiers</li>
+    <li>Columns that look like personal identifiers (names, phones, emails, national IDs, MRN, addresses, etc.) are <strong>anonymized</strong> for on-screen review and stored datasets.</li>
+    <li>Values are replaced with stable tokens such as <code>ANON_Name_0001</code>.</li>
+    <li>When you <strong>download</strong> Excel or CSV, original values are restored from a secure mapping kept with that dataset.</li>
   </ul>
-  <p>Uploads containing those column names are <strong>blocked automatically</strong>. Staff must also tick a privacy confirmation before upload.</p>
   <h2>Accountability</h2>
-  <p>Key actions (upload, save, download, report generate/print, suspend) are written to an <strong>audit log</strong> with user and timestamp — not the clinical row contents.</p>
+  <p>Key actions (upload, save, download, report generate/print, suspend) are written to an <strong>audit log</strong> with user and timestamp.</p>
   <h2>Retention</h2>
-  <p>Unfinished review drafts in <code>uploads/</code> are removed after 48 hours. Organizations should only keep cleaned aggregate datasets needed for reporting.</p>
+  <p>Unfinished review drafts in <code>uploads/</code> are removed after 48 hours. Organizations should only keep cleaned datasets needed for reporting.</p>
 </div>
 <a href="{{ url_for('index') }}">← Home</a>
 {% endblock %}

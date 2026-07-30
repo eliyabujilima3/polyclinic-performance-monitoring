@@ -17,7 +17,8 @@ from models import (
 from data_utils import (
     read_any, clean_and_correct, summarize_dataset, is_operations_dataframe,
     OPERATIONS_COLUMNS, save_pending, load_pending, clear_pending, records_preview,
-    find_forbidden_columns, compute_quality_score, month_period_options,
+    anonymize_dataframe, deanonymize_dataframe,
+    compute_quality_score, month_period_options,
     cleanup_stale_pending,
 )
 import report_engine as re_engine
@@ -27,6 +28,7 @@ from report_engine import (
     build_simple_forecast,
     build_simple_operations_report,
     compare_against_targets,
+    build_recommendations,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +40,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB uploads
 
 db.init_app(app)
+
+# Official Tanzania regions (mainland + Zanzibar) for registration dropdown
+TANZANIA_REGIONS = [
+    "Arusha", "Dar es Salaam", "Dodoma", "Geita", "Iringa", "Kagera", "Katavi",
+    "Kigoma", "Kilimanjaro", "Lindi", "Manyara", "Mara", "Mbeya", "Morogoro",
+    "Mtwara", "Mwanza", "Njombe", "Pwani", "Rukwa", "Ruvuma", "Shinyanga",
+    "Simiyu", "Singida", "Songwe", "Tabora", "Tanga",
+    "Mjini Magharibi", "Kaskazini Unguja", "Kusini Unguja",
+    "Kaskazini Pemba", "Kusini Pemba",
+]
 
 
 # ---------------------------------------------------------------- helpers
@@ -153,26 +165,24 @@ def inject_user():
     }
 
 
-def _require_privacy_consent():
-    if request.form.get("privacy_consent") != "yes":
-        flash(
-            "You must confirm that the file contains no personal patient identifiers "
-            "(names, phones, IDs, addresses).",
-            "error",
-        )
-        return False
-    return True
-
-
 def _stage_for_review(user, category, period_start, period_end, df, original_filename):
-    forbidden = find_forbidden_columns(df.columns)
-    if forbidden:
-        raise ValueError(
-            "Upload blocked for ethics/privacy. Remove personal columns: "
-            + ", ".join(forbidden)
-        )
-
     cleaned_df, missing_report, corrections, total_rows = clean_and_correct(df)
+    # Hide personal identifiers in stored/review data; keep map to restore on download
+    cleaned_df, pii_map, pii_cols = anonymize_dataframe(cleaned_df)
+    if pii_cols:
+        corrections["_pii_columns"] = pii_cols
+        corrections["_pii_map"] = pii_map
+        anon_note = (
+            "Personal columns were anonymized for privacy "
+            f"({', '.join(pii_cols)}). Original values are restored when you download Excel/CSV."
+        )
+        existing = corrections.get("_notes")
+        if isinstance(existing, dict) and existing.get("method"):
+            existing["method"] = str(existing["method"]) + " " + anon_note
+            corrections["_notes"] = existing
+        else:
+            corrections["_notes"] = {"method": anon_note}
+
     total_missing = sum(v for k, v in missing_report.items())
     quality = compute_quality_score(total_rows, total_missing, corrections)
     corrections["_quality_score"] = quality
@@ -190,7 +200,7 @@ def _stage_for_review(user, category, period_start, period_end, df, original_fil
         "corrections": corrections,
         "missing_report": missing_report,
         "is_operations": is_operations_dataframe(cleaned_df),
-        "privacy_confirmed": True,
+        "pii_columns": pii_cols,
     }
     save_pending(BASE_DIR, user.id, payload)
     return payload
@@ -204,6 +214,20 @@ def index():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    user = current_user()
+    # Logged-in staff / org admins must not open a second organization registration
+    if user and user.role in ("staff", "org_admin", "super_admin"):
+        flash(
+            "You already have an account. Staff cannot register a new organization — "
+            "use your existing login. Organization registration is only for new polyclinic admins.",
+            "error",
+        )
+        if user.role == "staff":
+            return redirect(url_for("staff_dashboard"))
+        if user.role == "org_admin":
+            return redirect(url_for("org_admin_dashboard"))
+        return redirect(url_for("super_admin_dashboard"))
+
     if request.method == "POST":
         org_name = request.form["org_name"].strip()
         region = request.form["region"].strip()
@@ -211,8 +235,25 @@ def register():
         email = request.form["email"].strip().lower()
         password = request.form["password"]
 
-        if User.query.filter_by(email=email).first():
-            flash("That email is already registered.", "error")
+        if region not in TANZANIA_REGIONS:
+            flash("Please select a valid region from the list.", "error")
+            return redirect(url_for("register"))
+
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            if existing.role == "staff":
+                flash(
+                    "This email belongs to a staff account. Staff cannot register an organization. "
+                    "Log in with the account your organization admin created.",
+                    "error",
+                )
+            elif existing.role == "org_admin":
+                flash(
+                    "This email already belongs to an organization admin. Log in instead of registering again.",
+                    "error",
+                )
+            else:
+                flash("That email is already registered.", "error")
             return redirect(url_for("register"))
 
         org = Organization(name=org_name, region=region, status="pending")
@@ -227,7 +268,7 @@ def register():
         flash("Registration submitted! Your organization is pending approval by the platform admin.", "success")
         return redirect(url_for("login"))
 
-    return render_template("register.html")
+    return render_template("register.html", regions=TANZANIA_REGIONS)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -281,10 +322,35 @@ def logout():
 @app.route("/super-admin")
 @login_required(roles=["super_admin"])
 def super_admin_dashboard():
-    pending = Organization.query.filter_by(status="pending").all()
-    approved = Organization.query.filter_by(status="approved").all()
-    suspended = Organization.query.filter_by(status="suspended").all()
-    rejected = Organization.query.filter_by(status="rejected").all()
+
+    pending = (
+        db.session.query(Organization, User)
+        .join(User, Organization.id == User.org_id)
+        .filter(Organization.status == "pending", User.role == "org_admin")
+        .all()
+    )
+
+    approved = (
+        db.session.query(Organization, User)
+        .join(User, Organization.id == User.org_id)
+        .filter(Organization.status == "approved", User.role == "org_admin")
+        .all()
+    )
+
+    suspended = (
+        db.session.query(Organization, User)
+        .join(User, Organization.id == User.org_id)
+        .filter(Organization.status == "suspended", User.role == "org_admin")
+        .all()
+    )
+
+    rejected = (
+        db.session.query(Organization, User)
+        .join(User, Organization.id == User.org_id)
+        .filter(Organization.status == "rejected", User.role == "org_admin")
+        .all()
+    )
+
     return render_template(
         "super_admin.html",
         pending=pending,
@@ -292,7 +358,6 @@ def super_admin_dashboard():
         suspended=suspended,
         rejected=rejected,
     )
-
 
 def _activate_org_users(org_id, active=True):
     users = User.query.filter_by(org_id=org_id).all()
@@ -501,8 +566,6 @@ def staff_dashboard():
 @login_required(roles=["staff"])
 def upload_dataset():
     user = current_user()
-    if not _require_privacy_consent():
-        return redirect(url_for("staff_dashboard"))
 
     category_id = int(request.form["category_id"])
     period_start = request.form["period_start"]
@@ -528,9 +591,8 @@ def upload_dataset():
         return redirect(url_for("staff_dashboard"))
 
     try:
-        _stage_for_review(user, category, period_start, period_end, df, file.filename)
+        payload = _stage_for_review(user, category, period_start, period_end, df, file.filename)
     except ValueError as e:
-        write_audit("upload_blocked_privacy", str(e), org_id=user.org_id, user=user)
         flash(str(e), "error")
         return redirect(url_for("staff_dashboard"))
 
@@ -540,6 +602,13 @@ def upload_dataset():
         org_id=user.org_id,
         user=user,
     )
+    if payload.get("pii_columns"):
+        flash(
+            "Personal columns were anonymized for on-screen use: "
+            + ", ".join(payload["pii_columns"])
+            + ". Download restores the original values.",
+            "success",
+        )
     return redirect(url_for("review_dataset"))
 
 
@@ -585,9 +654,6 @@ def manual_entry():
         return redirect(url_for("manual_entry"))
 
     # action == review
-    if not _require_privacy_consent():
-        return redirect(url_for("manual_entry"))
-
     rows = draft.get("rows", [])
     if not rows:
         flash("Add at least one row before reviewing.", "error")
@@ -602,16 +668,22 @@ def manual_entry():
 
     df = pd.DataFrame(rows)
     try:
-        _stage_for_review(
+        payload = _stage_for_review(
             user, category, draft["period_start"], draft["period_end"], df, "manual_entry.csv"
         )
     except ValueError as e:
-        write_audit("manual_blocked_privacy", str(e), org_id=user.org_id, user=user)
         flash(str(e), "error")
         return redirect(url_for("manual_entry"))
 
     session.pop("manual_draft", None)
     write_audit("manual_staged", f"{category.name} ({draft['period_start']} to {draft['period_end']})", org_id=user.org_id, user=user)
+    if payload.get("pii_columns"):
+        flash(
+            "Personal columns were anonymized for on-screen use: "
+            + ", ".join(payload["pii_columns"])
+            + ". Download restores the original values.",
+            "success",
+        )
     return redirect(url_for("review_dataset"))
 
 
@@ -702,11 +774,20 @@ def download_cleaned(dataset_id):
 
     rows = json.loads(ds.cleaned_json)
     df = pd.DataFrame(rows)
+    # Restore original personal values if anonymization map was stored
+    try:
+        corrections = json.loads(ds.corrections_json or "{}")
+    except Exception:
+        corrections = {}
+    pii_map = corrections.get("_pii_map") or {}
+    if pii_map:
+        df = deanonymize_dataframe(df, pii_map)
+
     buf = io.BytesIO()
     fmt = request.args.get("format", "xlsx")
     write_audit(
         "dataset_downloaded",
-        f"dataset #{dataset_id} as {fmt}",
+        f"dataset #{dataset_id} as {fmt}" + (" (deanonymized)" if pii_map else ""),
         org_id=user.org_id,
         user=user,
     )
@@ -849,11 +930,14 @@ def generate_report():
             cat_summary["quality_score"] = None
         summary[cat_name] = cat_summary
 
+    recommendations = build_recommendations(summary)
+    report_payload = {"categories": summary, "recommendations": recommendations}
+
     report = ReportRecord(
         org_id=user.org_id,
         period_start=period_start,
         period_end=period_end,
-        summary_json=json.dumps(summary),
+        summary_json=json.dumps(report_payload),
         generated_by=user.id,
     )
     db.session.add(report)
@@ -872,11 +956,33 @@ def generate_report():
 def _normalize_summary(summary):
     """Avoid Jinja clash: dict.key 'items' was read as dict.items method."""
     for cat in summary.values():
+        if not isinstance(cat, dict):
+            continue
         sections = cat.get("sections") or {}
         for section in sections.values():
             if isinstance(section, dict) and "items" in section and "rows" not in section:
                 section["rows"] = section.pop("items")
     return summary
+
+
+def _parse_report_payload(report):
+    """
+    Support both legacy summary_json ({cat: ...}) and
+    new shape ({categories: {...}, recommendations: [...]}).
+    """
+    data = json.loads(report.summary_json)
+    if isinstance(data, dict) and "categories" in data:
+        summary = data.get("categories") or {}
+        recommendations = data.get("recommendations")
+    else:
+        summary = data if isinstance(data, dict) else {}
+        recommendations = None
+        if isinstance(summary, dict) and "__recommendations__" in summary:
+            recommendations = summary.pop("__recommendations__", None)
+    summary = _normalize_summary(summary)
+    if recommendations is None:
+        recommendations = build_recommendations(summary)
+    return summary, recommendations
 
 
 @app.route("/dashboard/<int:report_id>")
@@ -886,9 +992,15 @@ def view_dashboard(report_id):
     report = ReportRecord.query.get_or_404(report_id)
     if report.org_id != user.org_id:
         abort(403)
-    summary = _normalize_summary(json.loads(report.summary_json))
+    summary, recommendations = _parse_report_payload(report)
     org = Organization.query.get(user.org_id)
-    return render_template("dashboard.html", report=report, summary=summary, org=org)
+    return render_template(
+        "dashboard.html",
+        report=report,
+        summary=summary,
+        recommendations=recommendations,
+        org=org,
+    )
 
 
 @app.route("/dashboard/<int:report_id>/print")
@@ -899,10 +1011,16 @@ def print_report(report_id):
     report = ReportRecord.query.get_or_404(report_id)
     if report.org_id != user.org_id:
         abort(403)
-    summary = _normalize_summary(json.loads(report.summary_json))
+    summary, recommendations = _parse_report_payload(report)
     org = Organization.query.get(user.org_id)
     write_audit("report_printed", f"report #{report_id}", org_id=user.org_id, user=user)
-    return render_template("report_print.html", report=report, summary=summary, org=org)
+    return render_template(
+        "report_print.html",
+        report=report,
+        summary=summary,
+        recommendations=recommendations,
+        org=org,
+    )
 
 
 @app.route("/feedback", methods=["GET", "POST"])

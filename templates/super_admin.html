@@ -7,10 +7,17 @@
   <h2>Pending organizations ({{ pending|length }})</h2>
   {% if pending %}
   <table>
-    <tr><th>Name</th><th>Region</th><th>Requested</th><th>Actions</th></tr>
-    {% for org in pending %}
+    <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Region</th>
+    <th>Requested</th>
+    <th>Actions</th>
+</tr>
+    {% for org, admin in pending %}
     <tr>
       <td>{{ org.name }}</td>
+      <td>{{ admin.email }}</td>
       <td>{{ org.region }}</td>
       <td>{{ org.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
       <td>
@@ -33,10 +40,17 @@
   <h2>Approved organizations ({{ approved|length }})</h2>
   {% if approved %}
   <table>
-    <tr><th>Name</th><th>Region</th><th>Status</th><th>Actions</th></tr>
-    {% for org in approved %}
+   <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Region</th>
+    <th>Status</th>
+    <th>Actions</th>
+</tr>
+    {% for org, admin in approved %}
     <tr>
       <td>{{ org.name }}</td>
+      <td/>{{ admin.email }}</td>
       <td>{{ org.region }}</td>
       <td><span class="pill approved">approved</span></td>
       <td>
@@ -57,10 +71,17 @@
   <h2>Suspended organizations ({{ suspended|length }})</h2>
   {% if suspended %}
   <table>
-    <tr><th>Name</th><th>Region</th><th>Status</th><th>Actions</th></tr>
-    {% for org in suspended %}
+    <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Region</th>
+    <th>Status</th>
+    <th>Actions</th>
+</tr>
+    {% for org, admin in suspended %}
     <tr>
       <td>{{ org.name }}</td>
+      <td>{{ org.email }}</td>
       <td>{{ org.region }}</td>
       <td><span class="pill pending">suspended</span></td>
       <td>
@@ -80,10 +101,16 @@
 <div class="card">
   <h2>Rejected organizations ({{ rejected|length }})</h2>
   <table>
-    <tr><th>Name</th><th>Region</th><th>Status</th></tr>
-    {% for org in rejected %}
+    <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Region</th>
+    <th>Status</th>
+</tr>
+    {% for org, admin in rejected %}
     <tr>
       <td>{{ org.name }}</td>
+      <td>{{ admin.email }}</td>
       <td>{{ org.region }}</td>
       <td><span class="pill rejected">rejected</span></td>
     </tr>

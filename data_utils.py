@@ -395,9 +395,9 @@ def records_preview(records, limit=12):
 
 
 # ---------------------------------------------------------------------------
-# Ethics: block columns that look like personal patient identifiers
+# Privacy: detect personal columns and anonymize (reversible on download)
 # ---------------------------------------------------------------------------
-FORBIDDEN_EXACT = {
+PII_EXACT = {
     "name", "patient_name", "client_name", "full_name", "firstname", "first_name",
     "lastname", "last_name", "surname", "phone", "mobile", "telephone", "email",
     "national_id", "nida", "passport", "mrn", "patient_id", "address", "dob",
@@ -405,7 +405,7 @@ FORBIDDEN_EXACT = {
     "nhif_number", "insurance_number", "id_number", "file_number", "file_no",
 }
 
-FORBIDDEN_SUBSTRINGS = (
+PII_SUBSTRINGS = (
     "patient_name", "client_name", "full_name", "phone_number", "mobile_number",
     "email_address", "national_id", "passport", "medical_record", "date_of_birth",
     "next_of_kin", "fingerprint", "nhif_number", "insurance_number", "home_address",
@@ -413,14 +413,75 @@ FORBIDDEN_SUBSTRINGS = (
 )
 
 
-def find_forbidden_columns(columns):
+def find_pii_columns(columns):
     """Return column names that look like personal patient identifiers."""
-    banned = []
+    found = []
     for col in columns:
         key = re.sub(r"[^a-z0-9]+", "_", str(col).strip().lower()).strip("_")
-        if key in FORBIDDEN_EXACT or any(s in key for s in FORBIDDEN_SUBSTRINGS):
-            banned.append(str(col))
-    return banned
+        if key in PII_EXACT or any(s in key for s in PII_SUBSTRINGS):
+            found.append(str(col))
+    return found
+
+
+# Backwards-compatible alias (old callers)
+find_forbidden_columns = find_pii_columns
+
+
+def _anon_label(col_name):
+    key = re.sub(r"[^a-zA-Z0-9]+", "", str(col_name)).strip() or "Field"
+    return key[:18]
+
+
+def anonymize_dataframe(df: pd.DataFrame):
+    """
+    Replace personal-identifier values with stable tokens (ANON_Name_0001).
+    Returns (anonymized_df, mapping, pii_columns) where
+    mapping is {column: {token: original_value}} for download restore.
+    """
+    pii_cols = find_pii_columns(df.columns)
+    if not pii_cols:
+        return df.copy(), {}, []
+
+    out = df.copy()
+    mapping = {}
+    for col in pii_cols:
+        reverse = {}
+        col_map = {}
+        counter = 1
+        new_vals = []
+        label = _anon_label(col)
+        for val in out[col].tolist():
+            if pd.isna(val):
+                new_vals.append(val)
+                continue
+            key = str(val).strip()
+            if key == "" or key.lower() in ("nan", "none", "null"):
+                new_vals.append(val)
+                continue
+            if key not in reverse:
+                token = f"ANON_{label}_{counter:04d}"
+                reverse[key] = token
+                col_map[token] = key
+                counter += 1
+            new_vals.append(reverse[key])
+        out[col] = new_vals
+        mapping[col] = col_map
+    return out, mapping, pii_cols
+
+
+def deanonymize_dataframe(df: pd.DataFrame, mapping):
+    """Restore original personal values from anonymization mapping."""
+    if not mapping:
+        return df.copy()
+    out = df.copy()
+    for col, col_map in mapping.items():
+        if col not in out.columns or not isinstance(col_map, dict):
+            continue
+        out[col] = [
+            col_map.get(str(v), v) if pd.notna(v) else v
+            for v in out[col].tolist()
+        ]
+    return out
 
 
 def compute_quality_score(row_count, missing_count, corrections):
